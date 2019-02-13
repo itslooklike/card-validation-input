@@ -1,9 +1,26 @@
 import React from 'react';
 import { Formik, Form } from 'formik';
 import styled from 'styled-components';
-import isCreditCard from 'validator/lib/isCreditCard';
-import VMasker from 'vanilla-masker';
 import Input from 'arui-feather/input';
+import Button from 'arui-feather/button';
+
+import cardType from './cardType';
+import fmt from './formatters';
+import validator from './validator';
+
+import IconMs from './assets/ms.svg';
+import IconVisa from './assets/visa.svg';
+
+const renderIcon = (name) => {
+  switch (name) {
+    case 'Visa':
+      return <IconVisa />;
+    case 'Mastercard':
+      return <IconMs />;
+    default:
+      return null;
+  }
+};
 
 const Container = styled.div`
   position: relative;
@@ -11,8 +28,14 @@ const Container = styled.div`
   padding-bottom: 50px;
 `;
 
+const ButtonWrap = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: 50px;
+`;
+
 const Row = styled.div`
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 `;
 
 const PlasticCard = styled.div`
@@ -76,117 +99,75 @@ const CVVNotice = styled.div`
   opacity: 0.5;
 `;
 
-const onCardNumberChange = (value, setFieldValue) => {
-  setFieldValue('cardNumber', VMasker.toPattern(value, '9999 9999 9999 9999'));
+const scheme = {
+  cardNumber: {
+    name: 'cardNumber',
+    label: 'Номер карты',
+  },
+  cardHolder: {
+    name: 'cardHolder',
+    label: 'Фамилия Имя',
+  },
+  cardMonth: {
+    name: 'cardMonth',
+    label: 'ММ',
+  },
+  cardYear: {
+    name: 'cardYear',
+    label: 'ГГ',
+  },
+  cardCVV: {
+    name: 'cardCVV',
+    label: 'CVV',
+  },
 };
 
-const onCardHolderChange = (value, setFieldValue) => {
-  setFieldValue(
-    'cardHolder',
-    value
-      .trimStart()
-      .toUpperCase()
-      .replace(/\d/g, '') // убираем цифры
-      .replace(/[^A-Z\s]+/g, '') // убираем НЕ латиницу
-      .replace(/\s{2,}/g, ' ') // заменяем два пробела на один
-      .substring(0, 20) // только первые 20 символов
-  );
+const handleInputChange = (name, value, setFieldValue) => {
+  console.log(cardType(value));
+  setFieldValue(name, fmt[name](value));
 };
 
-const onCardMonthChange = (value, setFieldValue) => {
-  setFieldValue('cardMonth', VMasker.toPattern(value, '99'));
+const handleSubmit = (values, { setSubmitting }) => {
+  setTimeout(() => {
+    alert(JSON.stringify(values, null, 2));
+    setSubmitting(false);
+  }, 400);
 };
 
-const onCardYearChange = (value, setFieldValue) => {
-  setFieldValue('cardYear', VMasker.toPattern(value, '99'));
-};
+const Card = () => {
+  const { cardNumber, cardHolder, cardMonth, cardYear, cardCVV } = scheme;
 
-const onCVVChange = (value, setFieldValue) => {
-  setFieldValue('cardCVV', VMasker.toPattern(value, '999'));
-};
+  return (
+    <div>
+      <Formik
+        initialValues={{
+          cardNumber: '',
+          cardHolder: '',
+          cardMonth: '',
+          cardYear: '',
+          cardCVV: '',
+        }}
+        validate={validator}
+        onSubmit={handleSubmit}
+      >
+        {({
+          isSubmitting,
+          setFieldValue,
+          errors,
+          touched,
+          handleBlur,
+          values,
+        }) => {
+          const cardNameError =
+            touched[cardNumber.name] && errors[cardNumber.name];
+          const cardHolderError =
+            touched[cardHolder.name] && errors[cardHolder.name];
+          const cardMonthError =
+            touched[cardMonth.name] && errors[cardMonth.name];
+          const cardYearError = touched[cardYear.name] && errors[cardYear.name];
+          const cardCVVError = touched[cardCVV.name] && errors[cardCVV.name];
 
-const Card = () => (
-  <div>
-    <Formik
-      initialValues={{
-        cardNumber: '',
-        cardHolder: '',
-        cardMonth: '',
-        cardYear: '',
-        cardCVV: '',
-      }}
-      validate={(values) => {
-        console.log('values', values);
-        let errors = {};
-        const { cardNumber, cardHolder, cardMonth, cardYear, cardCVV } = values;
-
-        // Валидация номера карты
-        if (!cardNumber) {
-          errors.cardNumber = 'Заполните номер карты';
-        } else if (!isCreditCard(cardNumber)) {
-          errors.cardNumber = 'Неверный номер карты';
-        }
-
-        // Валидация ФИО
-        const MIN_NAME_LENGTH = 3;
-        const trimmedCardHolder = cardHolder.trim();
-
-        if (!trimmedCardHolder) {
-          errors.cardHolder = 'Введите Фамилию и Имя';
-        } else if (trimmedCardHolder.length < MIN_NAME_LENGTH) {
-          errors.cardHolder = `Не короче ${MIN_NAME_LENGTH} символов`;
-        }
-
-        // Валидация месяца
-        const MAX_MONTH_VALID = 12;
-
-        if (!cardMonth) {
-          errors.cardMonth = 'Введите месяц';
-        } else if (parseInt(cardMonth, 10) > MAX_MONTH_VALID) {
-          errors.cardMonth = 'Неверно указан месяц';
-        }
-
-        // Валидация года
-        const MAX_YEAR_VALID = 18; // нужно фетчить дату с бека, в браузере может быть сбитая дата
-
-        if (!cardYear) {
-          errors.cardYear = 'Введите год';
-        } else if (parseInt(cardYear, 10) < MAX_YEAR_VALID) {
-          errors.cardYear = 'Карта уже истекла';
-        }
-
-        // Валидация CVV
-        if (!cardCVV) {
-          errors.cardCVV = 'Введите CVV код';
-        } else if (cardCVV.length < 3) {
-          errors.cardCVV = 'Введите код полностью';
-        }
-
-        return errors;
-      }}
-      onSubmit={(values, { setSubmitting }) => {
-        setTimeout(() => {
-          alert(JSON.stringify(values, null, 2));
-          setSubmitting(false);
-        }, 400);
-      }}
-    >
-      {({
-        isSubmitting,
-        setFieldValue,
-        errors,
-        touched,
-        handleBlur,
-        values,
-      }) => {
-        const cardNameError = touched.cardNumber && errors.cardNumber;
-        const cardHolderError = touched.cardHolder && errors.cardHolder;
-        const cardMonthError = touched.cardMonth && errors.cardMonth;
-        const cardYearError = touched.cardYear && errors.cardYear;
-        const cardCVVError = touched.cardCVV && errors.cardCVV;
-
-        return (
-          console.log(errors) || (
+          return (
             <Form>
               <Container>
                 <PlasticCard>
@@ -194,14 +175,14 @@ const Card = () => (
                     <Row>
                       <Input
                         type="text"
-                        name="cardNumber"
-                        label="Номер карты"
                         width="available"
-                        value={values.cardNumber}
+                        name={cardNumber.name}
+                        label={cardNumber.label}
+                        value={values[cardNumber.name]}
                         error={cardNameError ? cardNameError : null}
                         onBlur={handleBlur}
                         onChange={(evt) =>
-                          onCardNumberChange(evt, setFieldValue)
+                          handleInputChange(cardNumber.name, evt, setFieldValue)
                         }
                       />
                     </Row>
@@ -209,14 +190,14 @@ const Card = () => (
                     <Row>
                       <Input
                         type="text"
-                        name="cardHolder"
-                        label="Фамилия Имя"
                         width="available"
-                        value={values.cardHolder}
+                        name={cardHolder.name}
+                        label={cardHolder.label}
+                        value={values[cardHolder.name]}
                         error={cardHolderError ? cardHolderError : null}
                         onBlur={handleBlur}
                         onChange={(evt) =>
-                          onCardHolderChange(evt, setFieldValue)
+                          handleInputChange(cardHolder.name, evt, setFieldValue)
                         }
                       />
                     </Row>
@@ -224,14 +205,18 @@ const Card = () => (
                       <SmallInputsSlot>
                         <Input
                           type="text"
-                          name="cardMonth"
-                          label="MM"
                           width="available"
-                          value={values.cardMonth}
+                          name={cardMonth.name}
+                          label={cardMonth.label}
+                          value={values[cardMonth.name]}
                           error={cardMonthError ? cardMonthError : null}
                           onBlur={handleBlur}
                           onChange={(evt) =>
-                            onCardMonthChange(evt, setFieldValue)
+                            handleInputChange(
+                              cardMonth.name,
+                              evt,
+                              setFieldValue
+                            )
                           }
                         />
                       </SmallInputsSlot>
@@ -239,14 +224,14 @@ const Card = () => (
                       <SmallInputsSlot>
                         <Input
                           type="text"
-                          name="cardYear"
-                          label="YY"
                           width="available"
-                          value={values.cardYear}
+                          name={cardYear.name}
+                          label={cardYear.label}
+                          value={values[cardYear.name]}
                           error={cardYearError ? cardYearError : null}
                           onBlur={handleBlur}
                           onChange={(evt) =>
-                            onCardYearChange(evt, setFieldValue)
+                            handleInputChange(cardYear.name, evt, setFieldValue)
                           }
                         />
                       </SmallInputsSlot>
@@ -259,28 +244,32 @@ const Card = () => (
                     <CVVInputsSlot>
                       <Input
                         type="text"
-                        name="cardCVV"
-                        label="CVV"
                         width="available"
-                        value={values.cardCVV}
+                        name={cardCVV.name}
+                        label={cardCVV.label}
+                        value={values[cardCVV.name]}
                         error={cardCVVError ? cardCVVError : null}
                         onBlur={handleBlur}
-                        onChange={(evt) => onCVVChange(evt, setFieldValue)}
+                        onChange={(evt) =>
+                          handleInputChange(cardCVV.name, evt, setFieldValue)
+                        }
                       />
                       <CVVNotice>Три цифры на&nbsp;обороте карты</CVVNotice>
                     </CVVInputsSlot>
                   </CVVContainer>
                 </PlasticCardBackdrop>
               </Container>
-              <button type="submit" disabled={isSubmitting}>
-                Submit
-              </button>
+              <ButtonWrap>
+                <Button type="submit" disabled={isSubmitting}>
+                  Оплатить
+                </Button>
+              </ButtonWrap>
             </Form>
-          )
-        );
-      }}
-    </Formik>
-  </div>
-);
+          );
+        }}
+      </Formik>
+    </div>
+  );
+};
 
 export default Card;

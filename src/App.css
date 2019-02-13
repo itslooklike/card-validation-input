@@ -34,3 +34,8 @@ ul {
   margin: 0;
   list-style: none;
 }
+
+/* подправить размер ошибок */
+.input_size_m .input__sub {
+  font-size: 8px;
+}
