@@ -52,6 +52,7 @@ const CardIconWrap = styled.div`
   position: absolute;
   top: 20px;
   right: 30px;
+  max-width: 33px;
 `;
 
 const PlasticCardBackdrop = styled.div`
