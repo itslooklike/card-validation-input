@@ -8,8 +8,8 @@ import cardType from './cardType';
 import fmt from './formatters';
 import validator from './validator';
 
-import IconMs from './assets/ms.svg';
-import IconVisa from './assets/visa.svg';
+import { ReactComponent as IconVisa } from './assets/visa.svg';
+import { ReactComponent as IconMs } from './assets/ms.svg';
 
 const renderIcon = (name) => {
   switch (name) {
@@ -46,6 +46,12 @@ const PlasticCard = styled.div`
   border-radius: 10px;
   background-color: #f0f0ee;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+`;
+
+const CardIconWrap = styled.div`
+  position: absolute;
+  top: 20px;
+  right: 30px;
 `;
 
 const PlasticCardBackdrop = styled.div`
@@ -123,15 +129,17 @@ const scheme = {
 };
 
 const handleInputChange = (name, value, setFieldValue) => {
-  console.log(cardType(value));
   setFieldValue(name, fmt[name](value));
 };
 
 const handleSubmit = (values, { setSubmitting }) => {
+  const newVal = JSON.stringify(values, null, 2);
+  console.log('🏁', newVal);
+
   setTimeout(() => {
-    alert(JSON.stringify(values, null, 2));
+    alert(newVal);
     setSubmitting(false);
-  }, 400);
+  }, 100);
 };
 
 const Card = () => {
@@ -167,10 +175,14 @@ const Card = () => {
           const cardYearError = touched[cardYear.name] && errors[cardYear.name];
           const cardCVVError = touched[cardCVV.name] && errors[cardCVV.name];
 
+          const type = cardType(values[cardNumber.name]);
+
           return (
             <Form>
               <Container>
                 <PlasticCard>
+                  <CardIconWrap>{renderIcon(type)}</CardIconWrap>
+
                   <PlasticCardInner>
                     <Row>
                       <Input
