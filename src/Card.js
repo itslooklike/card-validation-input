@@ -1,13 +1,18 @@
 import React from 'react';
-import { Formik, Form, Field, ErrorMessage } from 'formik';
+import { Formik, Form } from 'formik';
 import styled from 'styled-components';
 import isCreditCard from 'validator/lib/isCreditCard';
+import VMasker from 'vanilla-masker';
 import Input from 'arui-feather/input';
 
 const Container = styled.div`
   position: relative;
   padding-right: 100px;
   padding-bottom: 50px;
+`;
+
+const Row = styled.div`
+  margin-bottom: 10px;
 `;
 
 const PlasticCard = styled.div`
@@ -71,6 +76,34 @@ const CVVNotice = styled.div`
   opacity: 0.5;
 `;
 
+const onCardNumberChange = (value, setFieldValue) => {
+  setFieldValue('cardNumber', VMasker.toPattern(value, '9999 9999 9999 9999'));
+};
+
+const onCardHolderChange = (value, setFieldValue) => {
+  setFieldValue(
+    'cardHolder',
+    value
+      .trimStart()
+      .toUpperCase()
+      .replace(/\d/g, '') // убираем цифры
+      .replace(/[^A-Z\s]+/g, '') // убираем НЕ латиницу
+      .replace(/\s{2,}/g, ' ') // заменяем два пробела на один
+  );
+};
+
+const onCardMonthChange = (value, setFieldValue) => {
+  setFieldValue('cardMonth', VMasker.toPattern(value, '99'));
+};
+
+const onCardYearChange = (value, setFieldValue) => {
+  setFieldValue('cardYear', VMasker.toPattern(value, '99'));
+};
+
+const onCVVChange = (value, setFieldValue) => {
+  setFieldValue('cardCVV', VMasker.toPattern(value, '999'));
+};
+
 const Card = () => (
   <div>
     <Formik
@@ -82,12 +115,55 @@ const Card = () => (
         cardCVV: '',
       }}
       validate={(values) => {
+        console.log('values', values);
         let errors = {};
-        if (!values.cardNumber) {
+        const { cardNumber, cardHolder, cardMonth, cardYear, cardCVV } = values;
+
+        // Валидация номера карты
+        if (!cardNumber) {
           errors.cardNumber = 'Необходимо заполнить номер карты';
-        } else if (!isCreditCard(values.cardNumber)) {
-          errors.email = 'Неверный номер карты';
+        } else if (!isCreditCard(cardNumber)) {
+          errors.cardNumber = 'Неверный номер карты';
         }
+
+        // Валидация ФИО
+        const MIN_NAME_LENGTH = 3;
+        const MAX_NAME_LENGTH = 20;
+        const trimmedCardHolder = cardHolder.trim();
+
+        if (!trimmedCardHolder) {
+          errors.cardHolder = 'Необходимо ввести Фамилию и Имя';
+        } else if (trimmedCardHolder.length < MIN_NAME_LENGTH) {
+          errors.cardHolder = `Фамилию и Имя не может быть короче ${MIN_NAME_LENGTH} букв`;
+        } else if (trimmedCardHolder.length > MAX_NAME_LENGTH) {
+          errors.cardHolder = `Фамилию и Имя не может быть длиннее ${MAX_NAME_LENGTH} букв`;
+        }
+
+        // Валидация месяца
+        const MAX_MONTH_VALID = 12;
+
+        if (!cardMonth) {
+          errors.cardMonth = 'Необходимо ввести месяц';
+        } else if (parseInt(cardMonth, 10) > MAX_MONTH_VALID) {
+          errors.cardMonth = `Неверно указан месяц`;
+        }
+
+        // Валидация года
+        const MAX_YEAR_VALID = 18; // нужно фетчить дату с бека, в браузере может быть сбитая дата
+
+        if (!cardYear) {
+          errors.cardYear = 'Необходимо ввести год';
+        } else if (parseInt(cardYear, 10) < MAX_YEAR_VALID) {
+          errors.cardYear = `Карта уже истекла`;
+        }
+
+        // Валидация CVV
+        if (!cardCVV) {
+          errors.cardCVV = 'Необходимо ввести код';
+        } else if (cardCVV.length < 3) {
+          errors.cardCVV = `Введите код полностью`;
+        }
+
         return errors;
       }}
       onSubmit={(values, { setSubmitting }) => {
@@ -97,81 +173,114 @@ const Card = () => (
         }, 400);
       }}
     >
-      {({ isSubmitting }) => (
-        <Form>
-          <Container>
-            <PlasticCard>
-              <PlasticCardInner>
-                <div>
-                  <Field
-                    type="text"
-                    name="cardNumber"
-                    placeholder="Введите номер карты"
-                    label="Номер карты"
-                    width="available"
-                    component={Input}
-                  />
-                  <ErrorMessage name="cardNumber" component="div" />
-                </div>
+      {({
+        isSubmitting,
+        setFieldValue,
+        errors,
+        touched,
+        handleBlur,
+        values,
+      }) => {
+        const cardNameError = touched.cardNumber && errors.cardNumber;
+        const cardHolderError = touched.cardHolder && errors.cardHolder;
+        const cardMonthError = touched.cardMonth && errors.cardMonth;
+        const cardYearError = touched.cardYear && errors.cardYear;
+        const cardCVVError = touched.cardCVV && errors.cardCVV;
 
-                <div>
-                  <Field
-                    type="text"
-                    name="cardHolder"
-                    placeholder="Введите Фамилию и Имя"
-                    label="Фамилия Имя"
-                    width="available"
-                    component={Input}
-                  />
-                  <ErrorMessage name="cardHolder" component="div" />
-                </div>
-                <SmallInputsContainer>
-                  <SmallInputsSlot>
-                    <Field
-                      type="text"
-                      name="cardMonth"
-                      label="MM"
-                      width="available"
-                      component={Input}
-                    />
-                    <ErrorMessage name="cardMonth" component="div" />
-                  </SmallInputsSlot>
+        return (
+          console.log(errors) || (
+            <Form>
+              <Container>
+                <PlasticCard>
+                  <PlasticCardInner>
+                    <Row>
+                      <Input
+                        type="text"
+                        name="cardNumber"
+                        label="Номер карты"
+                        width="available"
+                        value={values.cardNumber}
+                        error={cardNameError ? cardNameError : null}
+                        onBlur={handleBlur}
+                        onChange={(evt) =>
+                          onCardNumberChange(evt, setFieldValue)
+                        }
+                      />
+                    </Row>
 
-                  <SmallInputsSlot>
-                    <Field
-                      type="text"
-                      name="cardYear"
-                      label="YY"
-                      width="available"
-                      component={Input}
-                    />
-                    <ErrorMessage name="cardYear" component="div" />
-                  </SmallInputsSlot>
-                </SmallInputsContainer>
-              </PlasticCardInner>
-            </PlasticCard>
+                    <Row>
+                      <Input
+                        type="text"
+                        name="cardHolder"
+                        label="Фамилия Имя"
+                        width="available"
+                        value={values.cardHolder}
+                        error={cardHolderError ? cardHolderError : null}
+                        onBlur={handleBlur}
+                        onChange={(evt) =>
+                          onCardHolderChange(evt, setFieldValue)
+                        }
+                      />
+                    </Row>
+                    <SmallInputsContainer>
+                      <SmallInputsSlot>
+                        <Input
+                          type="text"
+                          name="cardMonth"
+                          label="MM"
+                          width="available"
+                          value={values.cardMonth}
+                          error={cardMonthError ? cardMonthError : null}
+                          onBlur={handleBlur}
+                          onChange={(evt) =>
+                            onCardMonthChange(evt, setFieldValue)
+                          }
+                        />
+                      </SmallInputsSlot>
 
-            <PlasticCardBackdrop>
-              <CVVContainer>
-                <CVVInputsSlot>
-                  <Field
-                    type="text"
-                    name="cardCVV"
-                    label="CVV"
-                    width="available"
-                    component={Input}
-                  />
-                  <ErrorMessage name="cardCVV" component="div" />
-                  <CVVNotice>Три цифры на&nbsp;обороте карты</CVVNotice>
-                </CVVInputsSlot>
-              </CVVContainer>
-            </PlasticCardBackdrop>
-          </Container>
-          <button type="submit" disabled={isSubmitting}>
-            Submit
-          </button>
-        </Form>
-      )}
+                      <SmallInputsSlot>
+                        <Input
+                          type="text"
+                          name="cardYear"
+                          label="YY"
+                          width="available"
+                          value={values.cardYear}
+                          error={cardYearError ? cardYearError : null}
+                          onBlur={handleBlur}
+                          onChange={(evt) =>
+                            onCardYearChange(evt, setFieldValue)
+                          }
+                        />
+                      </SmallInputsSlot>
+                    </SmallInputsContainer>
+                  </PlasticCardInner>
+                </PlasticCard>
+
+                <PlasticCardBackdrop>
+                  <CVVContainer>
+                    <CVVInputsSlot>
+                      <Input
+                        type="text"
+                        name="cardCVV"
+                        label="CVV"
+                        width="available"
+                        value={values.cardCVV}
+                        error={cardCVVError ? cardCVVError : null}
+                        onBlur={handleBlur}
+                        onChange={(evt) => onCVVChange(evt, setFieldValue)}
+                      />
+                      <CVVNotice>Три цифры на&nbsp;обороте карты</CVVNotice>
+                    </CVVInputsSlot>
+                  </CVVContainer>
+                </PlasticCardBackdrop>
+              </Container>
+              <button type="submit" disabled={isSubmitting}>
+                Submit
+              </button>
+            </Form>
+          )
+        );
+      }}
     </Formik>
   </div>
 );
