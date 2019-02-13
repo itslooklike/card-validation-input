@@ -18,7 +18,7 @@ const Row = styled.div`
 const PlasticCard = styled.div`
   position: relative;
   z-index: 1;
-  width: 400px;
+  width: 380px;
   height: 250px;
   border-radius: 10px;
   background-color: #f0f0ee;
@@ -31,7 +31,7 @@ const PlasticCardBackdrop = styled.div`
   right: 0;
   bottom: 0;
   z-index: 0;
-  width: 400px;
+  width: 380px;
   height: 250px;
   border-radius: 10px;
   background-color: #e0ddd7;
@@ -89,6 +89,7 @@ const onCardHolderChange = (value, setFieldValue) => {
       .replace(/\d/g, '') // убираем цифры
       .replace(/[^A-Z\s]+/g, '') // убираем НЕ латиницу
       .replace(/\s{2,}/g, ' ') // заменяем два пробела на один
+      .substring(0, 20) // только первые 20 символов
   );
 };
 
@@ -121,47 +122,44 @@ const Card = () => (
 
         // Валидация номера карты
         if (!cardNumber) {
-          errors.cardNumber = 'Необходимо заполнить номер карты';
+          errors.cardNumber = 'Заполните номер карты';
         } else if (!isCreditCard(cardNumber)) {
           errors.cardNumber = 'Неверный номер карты';
         }
 
         // Валидация ФИО
         const MIN_NAME_LENGTH = 3;
-        const MAX_NAME_LENGTH = 20;
         const trimmedCardHolder = cardHolder.trim();
 
         if (!trimmedCardHolder) {
-          errors.cardHolder = 'Необходимо ввести Фамилию и Имя';
+          errors.cardHolder = 'Введите Фамилию и Имя';
         } else if (trimmedCardHolder.length < MIN_NAME_LENGTH) {
-          errors.cardHolder = `Фамилию и Имя не может быть короче ${MIN_NAME_LENGTH} букв`;
-        } else if (trimmedCardHolder.length > MAX_NAME_LENGTH) {
-          errors.cardHolder = `Фамилию и Имя не может быть длиннее ${MAX_NAME_LENGTH} букв`;
+          errors.cardHolder = `Не короче ${MIN_NAME_LENGTH} символов`;
         }
 
         // Валидация месяца
         const MAX_MONTH_VALID = 12;
 
         if (!cardMonth) {
-          errors.cardMonth = 'Необходимо ввести месяц';
+          errors.cardMonth = 'Введите месяц';
         } else if (parseInt(cardMonth, 10) > MAX_MONTH_VALID) {
-          errors.cardMonth = `Неверно указан месяц`;
+          errors.cardMonth = 'Неверно указан месяц';
         }
 
         // Валидация года
         const MAX_YEAR_VALID = 18; // нужно фетчить дату с бека, в браузере может быть сбитая дата
 
         if (!cardYear) {
-          errors.cardYear = 'Необходимо ввести год';
+          errors.cardYear = 'Введите год';
         } else if (parseInt(cardYear, 10) < MAX_YEAR_VALID) {
-          errors.cardYear = `Карта уже истекла`;
+          errors.cardYear = 'Карта уже истекла';
         }
 
         // Валидация CVV
         if (!cardCVV) {
-          errors.cardCVV = 'Необходимо ввести код';
+          errors.cardCVV = 'Введите CVV код';
         } else if (cardCVV.length < 3) {
-          errors.cardCVV = `Введите код полностью`;
+          errors.cardCVV = 'Введите код полностью';
         }
 
         return errors;
